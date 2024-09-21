@@ -8,3 +8,5 @@
 .flaskenv*
 !.env.project
 !.env.vault
+
+src/resources/*
