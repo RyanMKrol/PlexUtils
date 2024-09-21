@@ -3,6 +3,7 @@ import { fetchLocalXmlData } from '../utils/remote';
 import Show from '../model/Show';
 import Season from '../model/Season';
 import Episode from '../model/Episode';
+import Movie from '../model/Movie';
 
 import { getCachedData, getCacheLocWithFilename } from '../utils/StoredCache';
 
@@ -12,7 +13,15 @@ import 'dotenv/config';
  * @returns {Array<object>} An array of plex library items
  */
 async function fetchRawPlexMovieLibraryData() {
-  return fetchLocalXmlData(`https://192.168.1.130:32400/library/sections/4/all?X-Plex-Token=${process.env.PLEX_API_TOKEN}`);
+  const rawFilmLibraryData = await getCachedData(
+    getCacheLocWithFilename('films'),
+    async () => fetchLocalXmlData(`https://192.168.1.130:32400/library/sections/4/all?X-Plex-Token=${process.env.PLEX_API_TOKEN}`),
+  );
+
+  return Promise.all(
+    rawFilmLibraryData.MediaContainer.Video
+      .map(async (item) => new Movie(item)),
+  );
 }
 
 /**

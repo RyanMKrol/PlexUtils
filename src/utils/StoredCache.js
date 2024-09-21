@@ -31,7 +31,6 @@ export async function getCachedData(location, populateCacheFn) {
     if (new Date() < new Date(cacheTtl)) {
       return val;
     }
-    console.log('could not use the cached value, moving on!');
   }
 
   const tomorrow = new Date();
