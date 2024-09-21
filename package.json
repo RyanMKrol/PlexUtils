@@ -1,0 +1,34 @@
+{
+  "name": "plex-utils",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "_auditExample": "node --experimental-specifier-resolution=node src/scripts/auditExample",
+    "lint": "eslint src",
+    "script:auditAll": "npm run lint && npm run _auditExample",
+    "script:auditExample": "npm run lint && npm run _auditExample"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanMKrol/PlexUtils.git"
+  },
+  "author": "Ryan Krol",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RyanMKrol/PlexUtils/issues"
+  },
+  "homepage": "https://github.com/RyanMKrol/PlexUtils#readme",
+  "devDependencies": {
+    "eslint": "^8.46.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.0",
+    "eslint-plugin-jsdoc": "^46.4.6"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "dotenv": "^16.3.1",
+    "fast-xml-parser": "^4.2.7",
+    "node-fetch": "^3.3.2"
+  }
+}
