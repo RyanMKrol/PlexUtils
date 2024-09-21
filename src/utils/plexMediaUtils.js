@@ -1,3 +1,5 @@
+import util from 'util';
+
 /**
  * Pulls the bitrate from a plex media object
  * @param {object} media Plex Media object
@@ -22,12 +24,21 @@ function getMediaResolution(media) {
  * @returns {number} The size of the file in Mb to 2 dp
  */
 function getMediaFileSizeMb(media) {
-  if (Array.isArray(media.Part)) {
-    console.log('Media has mulitple parts, cannot determine filesize');
-    return 0;
+  const mediaArray = Array.isArray(media) ? media : [media];
+
+  /**
+   * If we have multiple media items with a bitrate property, that
+   * suggests we have duplicate media, and need to clear them up!
+   */
+  const mediaItemsWithBitrate = mediaArray.filter((item) => typeof item['@_bitrate'] !== 'undefined');
+  if (mediaItemsWithBitrate.length > 1) {
+    throw new Error(
+      `More than one complete media exists, clean up your duplicates!\n
+    ${util.inspect(mediaItemsWithBitrate, { depth: null, colors: true })}`,
+    );
   }
 
-  const sizeMb = media.Part['@_size'] / 1000000;
+  const sizeMb = mediaItemsWithBitrate[0].Part['@_size'] / 1000000;
 
   // rounds number to 2dp
   return Math.round(sizeMb * 100) / 100;
