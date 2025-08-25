@@ -6,7 +6,7 @@
   "scripts": {
     "tv-library": "node src/scripts/displayTVLibrary.js",
     "movie-library": "node src/scripts/displayMovieLibrary.js",
-    "audit-tv-quality": "node src/scripts/auditTVQualityAbnormalities.js",
+    "audit-tv-episodes": "node src/scripts/auditTvEpisodeInconsistencies.js",
     "audit-movie-quality": "node src/scripts/auditMovieQuality.js"
   },
   "repository": {

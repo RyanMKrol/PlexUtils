@@ -268,13 +268,13 @@ function analyzeSeasonQuality(season) {
 function displayQualityAnalysis(results) {
   const showsWithIssues = results.filter(result => result.hasAbnormalities);
   
-  console.log(chalk.green.bold(`\n📊 Quality Analysis Summary:`));
+  console.log(chalk.green.bold(`\n📊 Episode Inconsistency Analysis Summary:`));
   console.log(chalk.blue(`📺 Total Shows Analyzed: ${results.length}`));
-  console.log(chalk.blue(`⚠️  Shows with Abnormalities: ${showsWithIssues.length}`));
+  console.log(chalk.blue(`⚠️  Shows with Inconsistencies: ${showsWithIssues.length}`));
   console.log(chalk.blue(`✅ Shows without Issues: ${results.length - showsWithIssues.length}\n`));
   
   if (showsWithIssues.length === 0) {
-    console.log(chalk.green('🎉 No quality abnormalities found in any shows!'));
+    console.log(chalk.green('🎉 No episode inconsistencies found in any shows!'));
     return;
   }
   
@@ -330,9 +330,9 @@ function displayQualityAnalysis(results) {
   });
 }
 
-async function auditTVQualityAbnormalities() {
+async function auditTvEpisodeInconsistencies() {
   try {
-    console.log(chalk.blue.bold('🔍 Auditing TV Library for Quality Abnormalities...\n'));
+    console.log(chalk.blue.bold('🔍 Auditing TV Library for Episode Inconsistencies...\n'));
     
     console.log(chalk.cyan('🔄 Fetching TV library data...'));
     const startTime = Date.now();
@@ -384,9 +384,9 @@ async function auditTVQualityAbnormalities() {
     displayQualityAnalysis(analysisResults);
     
   } catch (error) {
-    console.error(chalk.red.bold('❌ Error during quality audit:'), error.message);
+    console.error(chalk.red.bold('❌ Error during episode inconsistency audit:'), error.message);
     process.exit(1);
   }
 }
 
-auditTVQualityAbnormalities();
+auditTvEpisodeInconsistencies();
