@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 
 import util from 'util';
-import { fetchRawPlexMovieLibraryData, fetchRawPlexTelevisionLibraryData } from '../remote';
+import fetchPlexInfo from '../remote/index.js';
 import 'dotenv/config';
 
 (async function main() {
-  const plexMovieLibrary = await fetchRawPlexMovieLibraryData();
-  const plexTelevisionLibrary = await fetchRawPlexTelevisionLibraryData();
+  const data = await fetchPlexInfo();
 
-  console.log(util.inspect(plexTelevisionLibrary, { depth: null, colors: true }));
-  console.log(util.inspect(plexMovieLibrary, { depth: null, colors: true }));
+  console.log(util.inspect(data, { depth: null, colors: true }));
 }());
