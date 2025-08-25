@@ -1,3 +1,4 @@
+/* eslint-disable prefer-destructuring */
 /* eslint-disable no-underscore-dangle */
 
 export default class Show {
@@ -13,6 +14,7 @@ export default class Show {
     this._title = showData['@_title'];
     this._childrenUri = showData['@_key'];
     this._audienceRating = parseFloat(showData['@_audienceRating']);
+    this._metadataKey = showData['@_key'].split('children')[0];
   }
 
   // Getter for title
@@ -37,5 +39,14 @@ export default class Show {
 
   set seasons(newSeasons) {
     this._seasons = newSeasons;
+  }
+
+  // Getter and Setter for metadataKey
+  get metadataKey() {
+    return this._metadataKey;
+  }
+
+  set metadataKey(newMetadataKey) {
+    this._metadataKey = newMetadataKey;
   }
 }

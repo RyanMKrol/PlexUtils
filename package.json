@@ -5,9 +5,17 @@
   "type": "module",
   "scripts": {
     "_auditExample": "node --experimental-specifier-resolution=node src/scripts/auditExample",
+    "_auditFilmsLowQualityHighRating": "node --experimental-specifier-resolution=node src/scripts/auditFilmsLowQualityHighRating",
+    "_auditShowsWithInconsistentBitrate": "node --experimental-specifier-resolution=node src/scripts/auditShowsWithInconsistentBitrate",
+    "_auditShowsWithInconsistentResolution": "node --experimental-specifier-resolution=node src/scripts/auditShowsWithInconsistentResolution",
+    "_auditShowsWithMissingSeasons": "node --experimental-specifier-resolution=node src/scripts/auditShowsWithMissingSeasons",
     "lint": "eslint src",
     "script:auditAll": "npm run lint && npm run _auditExample",
-    "script:auditExample": "npm run lint && npm run _auditExample"
+    "script:auditExample": "npm run lint && npm run _auditExample",
+    "script:auditFilmsLowQualityHighRating": "npm run lint && npm run _auditFilmsLowQualityHighRating",
+    "script:auditShowsWithInconsistentBitrate": "npm run lint && npm run _auditShowsWithInconsistentBitrate",
+    "script:auditShowsWithInconsistentResolution": "npm run lint && npm run _auditShowsWithInconsistentResolution",
+    "script:auditShowsWithMissingSeasons": "npm run lint && npm run _auditShowsWithMissingSeasons"
   },
   "repository": {
     "type": "git",
@@ -29,6 +37,7 @@
     "chalk": "^5.3.0",
     "dotenv": "^16.3.1",
     "fast-xml-parser": "^4.2.7",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "random-hex": "^1.0.2"
   }
 }
