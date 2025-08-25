@@ -2,6 +2,7 @@
 
 import chalk from 'chalk';
 import { buildTVLibraryMap } from '../utils/libraryProcessor.js';
+import { formatBitrate } from '../utils/dataUtils.js';
 import 'dotenv/config';
 
 function displayTVLibraryFromMap(tvLibraryMap) {
@@ -24,9 +25,7 @@ function displayTVLibraryFromMap(tvLibraryMap) {
           // Display first 3 episodes with file details
           const episodesToShow = season.episodes.slice(0, 3);
           episodesToShow.forEach(episode => {
-            const displayBitrate = episode.bitrate !== 'Unknown' ? 
-              `${Math.round(parseInt(episode.bitrate.replace(' bps', '')) / 1000)} kbps` : 
-              'Unknown';
+            const displayBitrate = formatBitrate(episode.bitrate);
             
             console.log(chalk.green(`         📺 Episode ${episode.index}: ${episode.title}`));
             console.log(chalk.gray(`            📅 Air Date: ${episode.originallyAvailableAt} | Runtime: ${episode.duration} min`));

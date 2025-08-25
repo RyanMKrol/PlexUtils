@@ -2,59 +2,10 @@
 
 import chalk from 'chalk';
 import { buildTVLibraryMap } from '../utils/libraryProcessor.js';
+import { getMostCommonValue } from '../utils/dataUtils.js';
+import { getBaseFilename, getFilenameFromPath, cleanPrefixEpisodeNumbers } from '../utils/stringUtils.js';
 import 'dotenv/config';
 
-/**
- * Find the most common value in an array
- * @param {Array} values - Array of values
- * @returns {*} Most common value
- */
-function getMostCommonValue(values) {
-  const counts = {};
-  values.forEach(value => {
-    counts[value] = (counts[value] || 0) + 1;
-  });
-  
-  return Object.entries(counts)
-    .sort(([,a], [,b]) => b - a)[0]?.[0];
-}
-
-/**
- * Extract filename without path and extension
- * @param {string} filename - Full filename with path
- * @returns {string} Base filename
- */
-function getBaseFilename(filename) {
-  if (!filename || filename === 'Unknown') return '';
-  
-  // Get just the filename without path
-  const baseName = filename.split('/').pop().split('\\').pop();
-  
-  // Remove file extension
-  return baseName.replace(/\.[^.]+$/, '');
-}
-
-/**
- * Clean numbers from the end of a prefix
- * @param {string} prefix - Prefix to clean
- * @returns {string} Cleaned prefix
- */
-function cleanPrefixEpisodeNumbers(prefix) {
-  if (!prefix) return '';
-  
-  // Remove any trailing numbers and common episode patterns
-  const patterns = [
-    /[eE]\d{1,2}$/,  // E0, E1, E01, E10, e0, e1, etc.
-    /\d+$/           // Any trailing numbers
-  ];
-  
-  let cleaned = prefix;
-  patterns.forEach(pattern => {
-    cleaned = cleaned.replace(pattern, '');
-  });
-  
-  return cleaned.trim();
-}
 
 /**
  * Find the longest common prefix shared by at least half the filenames
@@ -314,7 +265,7 @@ function displayQualityAnalysis(results) {
         
         issue.outliers.forEach(outlier => {
           // Show only filename, not full path
-          const filename = outlier.filename.split('/').pop().split('\\').pop();
+          const filename = getFilenameFromPath(outlier.filename);
           
           if (issue.type === 'resolution') {
             console.log(chalk.gray(`         🔸 ${outlier.episode}: ${chalk.red(outlier.actual)}`));

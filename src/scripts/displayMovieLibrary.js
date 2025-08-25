@@ -2,6 +2,7 @@
 
 import chalk from 'chalk';
 import { buildMovieLibraryMap } from '../utils/libraryProcessor.js';
+import { formatBitrate } from '../utils/dataUtils.js';
 import 'dotenv/config';
 
 function displayMovieLibraryFromMap(movieLibraryMap) {
@@ -13,9 +14,7 @@ function displayMovieLibraryFromMap(movieLibraryMap) {
     if (movie.error) {
       console.log(chalk.red(`   ❌ Error fetching movie details: ${movie.error}`));
     } else {
-      const displayBitrate = movie.bitrate !== 'Unknown' ? 
-        `${Math.round(parseInt(movie.bitrate.replace(' bps', '')) / 1000)} kbps` : 
-        'Unknown';
+      const displayBitrate = formatBitrate(movie.bitrate);
       
       console.log(chalk.gray(`   📅 Release Date: ${movie.originallyAvailableAt} | Runtime: ${movie.duration} min`));
       console.log(chalk.gray(`   🎬 Resolution: ${movie.resolution} | Bitrate: ${displayBitrate} | Size: ${movie.fileSize}`));

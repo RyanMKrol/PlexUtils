@@ -2,34 +2,11 @@
 
 import chalk from 'chalk';
 import { buildMovieLibraryMap } from '../utils/libraryProcessor.js';
+import { isNotHighQuality } from '../utils/dataUtils.js';
+import { isRecentMovie } from '../utils/dateUtils.js';
+import { getFilenameFromPath } from '../utils/stringUtils.js';
 import 'dotenv/config';
 
-/**
- * Check if a resolution is not 1080 or 4k
- * @param {string} resolution - Resolution string (e.g., "1080", "4k", "720", "480")
- * @returns {boolean} True if resolution is not 1080 or 4k
- */
-function isNotHighQuality(resolution) {
-  if (!resolution || resolution === 'Unknown') return true;
-  
-  // Check for exact values: "1080" or "4k"
-  const normalizedResolution = resolution.toLowerCase().trim();
-  
-  return normalizedResolution !== '1080' && normalizedResolution !== '4k';
-}
-
-/**
- * Check if a movie was released in the last 15 years
- * @param {string|number} year - Year the movie was released
- * @returns {boolean} True if movie was released in the last 15 years
- */
-function isRecentMovie(year) {
-  const currentYear = new Date().getFullYear();
-  const cutoffYear = currentYear - 15; // 15 years ago
-  const movieYear = parseInt(year);
-  
-  return !isNaN(movieYear) && movieYear >= cutoffYear;
-}
 
 /**
  * Analyze movies for quality issues
@@ -88,7 +65,7 @@ function displayMovieQualityAnalysis(problematicMovies, totalMovies) {
     console.log(chalk.gray(`   📦 Format: ${movie.container} | Codec: ${movie.videoCodec}`));
     
     // Show only filename, not full path
-    const filename = movie.filename.split('/').pop().split('\\').pop();
+    const filename = getFilenameFromPath(movie.filename);
     console.log(chalk.gray(`   📁 File: ${filename}`));
     
     // Show folder path for easy navigation
