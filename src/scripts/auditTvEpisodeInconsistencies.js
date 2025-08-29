@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { buildTVLibraryMap } from '../utils/libraryProcessor.js';
 import { getMostCommonValue } from '../utils/dataUtils.js';
 import { getBaseFilename, getFilenameFromPath, cleanPrefixEpisodeNumbers } from '../utils/stringUtils.js';
+import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
 import 'dotenv/config';
 
 
@@ -213,33 +214,36 @@ function analyzeSeasonQuality(season) {
 }
 
 /**
- * Display quality analysis results
+ * Generate quality analysis report
  * @param {Array} results - Analysis results
+ * @returns {string} Report content
  */
-function displayQualityAnalysis(results) {
+function generateQualityAnalysisReport(results) {
   const showsWithIssues = results.filter(result => result.hasAbnormalities);
   
-  console.log(chalk.green.bold(`\n📊 Episode Inconsistency Analysis Summary:`));
-  console.log(chalk.blue(`📺 Total Shows Analyzed: ${results.length}`));
-  console.log(chalk.blue(`⚠️  Shows with Inconsistencies: ${showsWithIssues.length}`));
-  console.log(chalk.blue(`✅ Shows without Issues: ${results.length - showsWithIssues.length}\n`));
+  let output = `📊 TV EPISODE INCONSISTENCY AUDIT REPORT\n`;
+  output += `Generated: ${new Date().toISOString()}\n\n`;
+  output += `📺 Total Shows Analyzed: ${results.length}\n`;
+  output += `⚠️  Shows with Inconsistencies: ${showsWithIssues.length}\n`;
+  output += `✅ Shows without Issues: ${results.length - showsWithIssues.length}\n\n`;
+  output += '='.repeat(100) + '\n\n';
   
   if (showsWithIssues.length === 0) {
-    console.log(chalk.green('🎉 No episode inconsistencies found in any shows!'));
-    return;
+    output += '🎉 No episode inconsistencies found in any shows!\n';
+    return output;
   }
   
   showsWithIssues.forEach((show, index) => {
-    console.log(chalk.yellow.bold(`${index + 1}. ${show.title} (${show.year})`));
+    output += `${index + 1}. ${show.title} (${show.year})\n`;
     
     show.seasonsWithIssues.forEach(season => {
-      console.log(chalk.cyan(`   📁 ${season.title} - ${season.totalEpisodes} episodes`));
+      output += `   📁 ${season.title} - ${season.totalEpisodes} episodes\n`;
       
       // Show folder path once per season (extract from first outlier's filename)
       if (season.issues.length > 0 && season.issues[0].outliers.length > 0) {
         const firstFilename = season.issues[0].outliers[0].filename;
         const folderPath = firstFilename.substring(0, firstFilename.lastIndexOf('/'));
-        console.log(chalk.gray(`      📂 Path: ${folderPath}`));
+        output += `      📂 Path: ${folderPath}\n`;
       }
       
       season.issues.forEach(issue => {
@@ -253,14 +257,14 @@ function displayQualityAnalysis(results) {
           filenameConsistency: 'FILENAME CONSISTENCY'
         }[issue.type] || issue.type.toUpperCase();
         
-        console.log(chalk.red(`      ${typeEmoji} ${typeDisplayName} Inconsistency:`));
+        output += `      ${typeEmoji} ${typeDisplayName} Inconsistency:\n`;
         
         if (issue.type === 'filenameConsistency') {
-          const prefixInfo = issue.expectedPrefix ? chalk.cyan(`Prefix: "${issue.expectedPrefix}"`) : 'No common prefix';
-          const suffixInfo = issue.expectedSuffix ? chalk.magenta(`Suffix: "${issue.expectedSuffix}"`) : 'No common suffix';
-          console.log(chalk.gray(`         Expected: ${prefixInfo}, ${suffixInfo}`));
+          const prefixInfo = issue.expectedPrefix ? `Prefix: "${issue.expectedPrefix}"` : 'No common prefix';
+          const suffixInfo = issue.expectedSuffix ? `Suffix: "${issue.expectedSuffix}"` : 'No common suffix';
+          output += `         Expected: ${prefixInfo}, ${suffixInfo}\n`;
         } else {
-          console.log(chalk.gray(`         Expected: ${issue.expected}${issue.tolerance ? ` (±${issue.tolerance})` : ''}`));
+          output += `         Expected: ${issue.expected}${issue.tolerance ? ` (±${issue.tolerance})` : ''}\n`;
         }
         
         issue.outliers.forEach(outlier => {
@@ -268,17 +272,19 @@ function displayQualityAnalysis(results) {
           const filename = getFilenameFromPath(outlier.filename);
           
           if (issue.type === 'resolution') {
-            console.log(chalk.gray(`         🔸 ${outlier.episode}: ${chalk.red(outlier.actual)}`));
-            console.log(chalk.gray(`            📁 ${filename}`));
+            output += `         🔸 ${outlier.episode}: ${outlier.actual}\n`;
+            output += `            📁 ${filename}\n`;
           } else {
-            console.log(chalk.gray(`         📁 ${filename}`));
+            output += `         📁 ${filename}\n`;
           }
         });
       });
     });
     
-    console.log(''); // Empty line between shows
+    output += '\n';
   });
+  
+  return output;
 }
 
 async function auditTvEpisodeInconsistencies() {
@@ -332,7 +338,15 @@ async function auditTvEpisodeInconsistencies() {
     
     console.log(chalk.green('✅ Analysis complete\n'));
     
-    displayQualityAnalysis(analysisResults);
+    console.log(chalk.cyan('📝 Generating episode inconsistency report...'));
+    const reportContent = generateQualityAnalysisReport(analysisResults);
+    
+    const filename = generateTimestampedFilename('tv-episode-inconsistencies-audit');
+    const filePath = writeOutputFile(filename, reportContent);
+    
+    const showsWithIssues = analysisResults.filter(result => result.hasAbnormalities);
+    console.log(chalk.green(`✅ Episode inconsistency report saved to: ${chalk.bold(filePath)}`));
+    console.log(chalk.gray(`📄 Report analyzed ${analysisResults.length} shows, found ${showsWithIssues.length} with inconsistencies`));
     
   } catch (error) {
     console.error(chalk.red.bold('❌ Error during episode inconsistency audit:'), error.message);

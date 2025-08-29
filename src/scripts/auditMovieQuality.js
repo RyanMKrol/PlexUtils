@@ -5,6 +5,7 @@ import { buildMovieLibraryMap } from '../utils/libraryProcessor.js';
 import { isNotHighQuality } from '../utils/dataUtils.js';
 import { isRecentMovie } from '../utils/dateUtils.js';
 import { getFilenameFromPath } from '../utils/stringUtils.js';
+import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
 import 'dotenv/config';
 
 
@@ -35,46 +36,51 @@ function analyzeMovieQuality(movies) {
 }
 
 /**
- * Display movie quality analysis results
+ * Generate movie quality analysis report
  * @param {Array} problematicMovies - Movies with quality issues
  * @param {number} totalMovies - Total number of movies analyzed
+ * @returns {string} Report content
  */
-function displayMovieQualityAnalysis(problematicMovies, totalMovies) {
+function generateMovieQualityReport(problematicMovies, totalMovies) {
   const currentYear = new Date().getFullYear();
   const cutoffYear = currentYear - 15;
   
-  console.log(chalk.green.bold(`\n🎬 Movie Quality Analysis Summary:`));
-  console.log(chalk.blue(`📽️  Total Movies Analyzed: ${totalMovies}`));
-  console.log(chalk.blue(`📅 Checking movies from ${cutoffYear} onwards (last 15 years)`));
-  console.log(chalk.blue(`⚠️  Movies needing quality upgrade: ${problematicMovies.length}`));
-  console.log(chalk.blue(`✅ Recent movies in good quality: ${totalMovies - problematicMovies.length}\n`));
+  let output = `🎬 MOVIE QUALITY AUDIT REPORT\n`;
+  output += `Generated: ${new Date().toISOString()}\n\n`;
+  output += `📽️  Total Movies Analyzed: ${totalMovies}\n`;
+  output += `📅 Checking movies from ${cutoffYear} onwards (last 15 years)\n`;
+  output += `⚠️  Movies needing quality upgrade: ${problematicMovies.length}\n`;
+  output += `✅ Recent movies in good quality: ${totalMovies - problematicMovies.length}\n\n`;
+  output += '='.repeat(100) + '\n\n';
   
   if (problematicMovies.length === 0) {
-    console.log(chalk.green('🎉 All recent movies are in 1080 or 4k quality!'));
-    return;
+    output += '🎉 All recent movies are in 1080 or 4k quality!\n';
+    return output;
   }
   
-  console.log(chalk.yellow.bold('Movies that should be in 1080 or 4k quality:\n'));
+  output += 'Movies that should be in 1080 or 4k quality:\n\n';
   
   problematicMovies.forEach((movie, index) => {
-    console.log(chalk.yellow.bold(`${index + 1}. ${movie.title} (${movie.year})`));
-    console.log(chalk.red(`   📐 Current Resolution: ${movie.resolution}`));
-    console.log(chalk.green(`   ✨ Expected: ${movie.expectedResolutions}`));
-    console.log(chalk.gray(`   📅 Release Date: ${movie.originallyAvailableAt}`));
-    console.log(chalk.gray(`   💾 File Size: ${movie.fileSize}`));
-    console.log(chalk.gray(`   📦 Format: ${movie.container} | Codec: ${movie.videoCodec}`));
+    output += `${index + 1}. ${movie.title} (${movie.year})\n`;
+    output += `   📐 Current Resolution: ${movie.resolution}\n`;
+    output += `   ✨ Expected: ${movie.expectedResolutions}\n`;
+    output += `   📅 Release Date: ${movie.originallyAvailableAt}\n`;
+    output += `   💾 File Size: ${movie.fileSize}\n`;
+    output += `   📦 Format: ${movie.container} | Codec: ${movie.videoCodec}\n`;
     
     // Show only filename, not full path
     const filename = getFilenameFromPath(movie.filename);
-    console.log(chalk.gray(`   📁 File: ${filename}`));
+    output += `   📁 File: ${filename}\n`;
     
     // Show folder path for easy navigation
     const folderPath = movie.filename.substring(0, movie.filename.lastIndexOf('/'));
-    console.log(chalk.gray(`   📂 Path: ${folderPath}`));
+    output += `   📂 Path: ${folderPath}\n`;
     
-    console.log('='.repeat(80));
-    console.log('');
+    output += '='.repeat(80) + '\n';
+    output += '\n';
   });
+  
+  return output;
 }
 
 async function auditMovieQuality() {
@@ -95,7 +101,14 @@ async function auditMovieQuality() {
     
     console.log(chalk.green('✅ Analysis complete\n'));
     
-    displayMovieQualityAnalysis(problematicMovies, result.data.length);
+    console.log(chalk.cyan('📝 Generating movie quality report...'));
+    const reportContent = generateMovieQualityReport(problematicMovies, result.data.length);
+    
+    const filename = generateTimestampedFilename('movie-quality-audit');
+    const filePath = writeOutputFile(filename, reportContent);
+    
+    console.log(chalk.green(`✅ Movie quality audit report saved to: ${chalk.bold(filePath)}`));
+    console.log(chalk.gray(`📄 Report analyzed ${result.data.length} movies, found ${problematicMovies.length} needing quality upgrades`));
     
   } catch (error) {
     console.error(chalk.red.bold('❌ Error during movie quality audit:'), error.message);

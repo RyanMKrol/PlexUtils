@@ -3,28 +3,34 @@
 import chalk from 'chalk';
 import { buildMovieLibraryMap } from '../utils/libraryProcessor.js';
 import { formatBitrate } from '../utils/dataUtils.js';
+import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
 import 'dotenv/config';
 
-function displayMovieLibraryFromMap(movieLibraryMap) {
-  console.log(chalk.green.bold(`🎬 Total Movies: ${movieLibraryMap.length}\n`));
+function generateMovieLibraryReport(movieLibraryMap) {
+  let output = `🎬 MOVIE LIBRARY REPORT\n`;
+  output += `Generated: ${new Date().toISOString()}\n`;
+  output += `Total Movies: ${movieLibraryMap.length}\n\n`;
+  output += '='.repeat(100) + '\n\n';
   
   movieLibraryMap.forEach((movie, index) => {
-    console.log(chalk.yellow.bold(`${index + 1}. ${movie.title} (${movie.year})`));
+    output += `${index + 1}. ${movie.title} (${movie.year})\n`;
     
     if (movie.error) {
-      console.log(chalk.red(`   ❌ Error fetching movie details: ${movie.error}`));
+      output += `   ❌ Error fetching movie details: ${movie.error}\n`;
     } else {
       const displayBitrate = formatBitrate(movie.bitrate);
       
-      console.log(chalk.gray(`   📅 Release Date: ${movie.originallyAvailableAt} | Runtime: ${movie.duration} min`));
-      console.log(chalk.gray(`   🎬 Resolution: ${movie.resolution} | Bitrate: ${displayBitrate} | Size: ${movie.fileSize}`));
-      console.log(chalk.gray(`   📦 Container: ${movie.container} | Video: ${movie.videoCodec} | Audio: ${movie.audioCodec} (${movie.audioChannels}ch)`));
-      console.log(chalk.gray(`   📁 File: ${movie.filename}`));
+      output += `   📅 Release Date: ${movie.originallyAvailableAt} | Runtime: ${movie.duration} min\n`;
+      output += `   🎬 Resolution: ${movie.resolution} | Bitrate: ${displayBitrate} | Size: ${movie.fileSize}\n`;
+      output += `   📦 Container: ${movie.container} | Video: ${movie.videoCodec} | Audio: ${movie.audioCodec} (${movie.audioChannels}ch)\n`;
+      output += `   📁 File: ${movie.filename}\n`;
     }
     
-    console.log('='.repeat(80)); // Separator line between movies
-    console.log(''); // Empty line between movies
+    output += '='.repeat(80) + '\n';
+    output += '\n';
   });
+  
+  return output;
 }
 
 async function displayMovieLibrary() {
@@ -33,13 +39,20 @@ async function displayMovieLibrary() {
     
     console.log(chalk.cyan('🔄 Fetching all movies...'));
     const startTime = Date.now();
-    const result = await buildMovieLibraryMap(10); // Limit to first 10 for testing
+    const result = await buildMovieLibraryMap(); 
     const buildTime = Date.now() - startTime;
     
-    console.log(chalk.green(`✅ Found ${result.totalFound} movies total, processing first ${result.processed} for testing\n`));
+    console.log(chalk.green(`✅ Found ${result.totalFound} movies total`));
     console.log(chalk.green(`⚡ Data fetched in ${(buildTime / 1000).toFixed(2)} seconds\n`));
     
-    displayMovieLibraryFromMap(result.data);
+    console.log(chalk.cyan('📝 Generating movie library report...'));
+    const reportContent = generateMovieLibraryReport(result.data);
+    
+    const filename = generateTimestampedFilename('movie-library-report');
+    const filePath = writeOutputFile(filename, reportContent);
+    
+    console.log(chalk.green(`✅ Movie library report saved to: ${chalk.bold(filePath)}`));
+    console.log(chalk.gray(`📄 Report contains ${result.data.length} movies with detailed information`));
     
   } catch (error) {
     console.error(chalk.red.bold('❌ Error fetching movie library:'), error.message);

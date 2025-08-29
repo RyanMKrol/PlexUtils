@@ -10,3 +10,5 @@
 !.env.vault
 
 src/resources/*
+
+out/

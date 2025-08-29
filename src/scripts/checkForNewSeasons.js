@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { buildTVLibraryMap } from '../utils/libraryProcessor.js';
 import { RateLimiter, retryWithBackoff } from '../utils/apiUtils.js';
 import { cleanShowTitle } from '../utils/stringUtils.js';
+import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
 import 'dotenv/config';
 
 // Create a global rate limiter instance
@@ -256,42 +257,65 @@ async function checkShowForNewSeasons(plexShow) {
 }
 
 /**
- * Display results of new season check
+ * Generate new season check report
  * @param {Array} results - Array of check results
+ * @returns {string} Report content
  */
-function displayNewSeasonResults(results) {
+function generateNewSeasonReport(results) {
   const showsWithNewSeasons = results.filter(r => r.status === 'new_season_available');
   const upToDateShows = results.filter(r => r.status === 'up_to_date');
   const endedShows = results.filter(r => r.status === 'ended');
   const errorShows = results.filter(r => r.status === 'not_found' || r.status === 'details_error');
   
-  console.log(chalk.green.bold(`\n📺 New Season Check Summary:`));
-  console.log(chalk.blue(`🔍 Total Shows Checked: ${results.length}`));
-  console.log(chalk.green(`🆕 Shows with New Seasons: ${showsWithNewSeasons.length}`));
-  console.log(chalk.blue(`✅ Shows Up to Date: ${upToDateShows.length}`));
-  console.log(chalk.gray(`🏁 Ended/Canceled Shows: ${endedShows.length}`));
-  console.log(chalk.yellow(`⚠️  Shows with Errors: ${errorShows.length}\n`));
+  let output = `📺 NEW SEASON CHECK REPORT\n`;
+  output += `Generated: ${new Date().toISOString()}\n\n`;
+  output += `🔍 Total Shows Checked: ${results.length}\n`;
+  output += `🆕 Shows with New Seasons: ${showsWithNewSeasons.length}\n`;
+  output += `✅ Shows Up to Date: ${upToDateShows.length}\n`;
+  output += `🏁 Ended/Canceled Shows: ${endedShows.length}\n`;
+  output += `⚠️  Shows with Errors: ${errorShows.length}\n\n`;
+  output += '='.repeat(100) + '\n\n';
   
   if (showsWithNewSeasons.length > 0) {
-    console.log(chalk.green.bold('🎉 Shows with New Seasons Available:\n'));
+    output += '🎉 SHOWS WITH NEW SEASONS AVAILABLE:\n\n';
     
     showsWithNewSeasons.forEach((result, index) => {
-      console.log(chalk.yellow.bold(`${index + 1}. ${result.show.title} (${result.show.year})`));
-      console.log(chalk.green(`   🆕 ${result.message}`));
-      console.log(chalk.cyan(`   📅 Latest season aired: ${result.tmdbData.last_air_date || 'Unknown'}`));
-      console.log(chalk.gray(`   🔗 TMDB: https://www.themoviedb.org/tv/${result.tmdbData.id}`));
-      console.log('');
+      output += `${index + 1}. ${result.show.title} (${result.show.year})\n`;
+      output += `   🆕 ${result.message}\n`;
+      output += `   📅 Latest season aired: ${result.tmdbData.last_air_date || 'Unknown'}\n`;
+      output += `   🔗 TMDB: https://www.themoviedb.org/tv/${result.tmdbData.id}\n`;
+      output += `   📊 Missing ${result.missingSeasonsCount} season(s)\n`;
+      output += '='.repeat(80) + '\n\n';
     });
   } else {
-    console.log(chalk.blue('📺 All your shows are up to date!'));
+    output += '📺 All your shows are up to date!\n\n';
+  }
+  
+  if (upToDateShows.length > 0) {
+    output += '✅ SHOWS UP TO DATE:\n\n';
+    upToDateShows.forEach((result, index) => {
+      output += `${index + 1}. ${result.show.title} (${result.show.year})\n`;
+    });
+    output += '\n';
+  }
+  
+  if (endedShows.length > 0) {
+    output += '🏁 ENDED/CANCELED SHOWS:\n\n';
+    endedShows.forEach((result, index) => {
+      output += `${index + 1}. ${result.show.title} (${result.show.year}) - ${result.message}\n`;
+    });
+    output += '\n';
   }
   
   if (errorShows.length > 0) {
-    console.log(chalk.yellow.bold('\n⚠️  Shows with Issues:'));
+    output += '⚠️  SHOWS WITH ISSUES:\n\n';
     errorShows.forEach((result, index) => {
-      console.log(chalk.gray(`${index + 1}. ${result.show.title} (${result.show.year}) - ${result.message}`));
+      output += `${index + 1}. ${result.show.title} (${result.show.year}) - ${result.message}\n`;
     });
+    output += '\n';
   }
+  
+  return output;
 }
 
 async function checkForNewSeasons() {
@@ -317,7 +341,15 @@ async function checkForNewSeasons() {
     
     console.log(chalk.green('\n✅ Season check complete\n'));
     
-    displayNewSeasonResults(checkResults);
+    console.log(chalk.cyan('📝 Generating new season report...'));
+    const reportContent = generateNewSeasonReport(checkResults);
+    
+    const filename = generateTimestampedFilename('new-seasons-check');
+    const filePath = writeOutputFile(filename, reportContent);
+    
+    const showsWithNewSeasons = checkResults.filter(r => r.status === 'new_season_available');
+    console.log(chalk.green(`✅ New season report saved to: ${chalk.bold(filePath)}`));
+    console.log(chalk.gray(`📄 Report checked ${checkResults.length} shows, found ${showsWithNewSeasons.length} with new seasons available`));
     
   } catch (error) {
     console.error(chalk.red.bold('❌ Error during new season check:'), error.message);
