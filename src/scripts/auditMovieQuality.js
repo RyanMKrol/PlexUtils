@@ -6,6 +6,7 @@ import { isNotHighQuality } from '../utils/dataUtils.js';
 import { isRecentMovie } from '../utils/dateUtils.js';
 import { getFilenameFromPath } from '../utils/stringUtils.js';
 import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
+import { filterIgnoredItems, presentAuditResults, getIgnoredItemCount } from '../utils/interactiveUtils.js';
 import 'dotenv/config';
 
 
@@ -83,6 +84,34 @@ function generateMovieQualityReport(problematicMovies, totalMovies) {
   return output;
 }
 
+/**
+ * Generate unique ID for a movie issue
+ * @param {Object} movie - Movie object with quality issue
+ * @returns {string} Unique identifier
+ */
+function getMovieIssueId(movie) {
+  return `${movie.title}:${movie.year}:${movie.resolution}`;
+}
+
+/**
+ * Display a movie quality issue to the user
+ * @param {Object} movie - Movie object with quality issue
+ */
+function displayMovieIssue(movie) {
+  console.log(chalk.yellow.bold(`${movie.title} (${movie.year})`));
+  console.log(chalk.gray(`📐 Current Resolution: ${movie.resolution}`));
+  console.log(chalk.gray(`✨ Expected: ${movie.expectedResolutions}`));
+  console.log(chalk.gray(`📅 Release Date: ${movie.originallyAvailableAt}`));
+  console.log(chalk.gray(`💾 File Size: ${movie.fileSize}`));
+  console.log(chalk.gray(`📦 Format: ${movie.container} | Codec: ${movie.videoCodec}`));
+  
+  const filename = getFilenameFromPath(movie.filename);
+  console.log(chalk.gray(`📁 File: ${filename}`));
+  
+  const folderPath = movie.filename.substring(0, movie.filename.lastIndexOf('/'));
+  console.log(chalk.gray(`📂 Path: ${folderPath}`));
+}
+
 async function auditMovieQuality() {
   try {
     console.log(chalk.blue.bold('🎬 Auditing Movie Library for Quality Issues...\n'));
@@ -97,18 +126,56 @@ async function auditMovieQuality() {
     
     console.log(chalk.cyan('🔄 Analyzing movie quality...'));
     
-    const problematicMovies = analyzeMovieQuality(result.data);
+    const allProblematicMovies = analyzeMovieQuality(result.data);
     
     console.log(chalk.green('✅ Analysis complete\n'));
     
-    console.log(chalk.cyan('📝 Generating movie quality report...'));
-    const reportContent = generateMovieQualityReport(problematicMovies, result.data.length);
+    // Always generate complete audit report first
+    console.log(chalk.cyan('📝 Generating complete movie quality audit report...'));
+    const completeReportContent = generateMovieQualityReport(allProblematicMovies, result.data.length);
+    const completeFilename = generateTimestampedFilename('movie-quality-audit-complete');
+    const completeFilePath = writeOutputFile(completeFilename, completeReportContent);
     
-    const filename = generateTimestampedFilename('movie-quality-audit');
-    const filePath = writeOutputFile(filename, reportContent);
+    console.log(chalk.green(`✅ Complete audit report saved to: ${chalk.bold(completeFilePath)}`));
+    console.log(chalk.gray(`📄 Complete report contains ${allProblematicMovies.length} movies with quality issues\n`));
     
-    console.log(chalk.green(`✅ Movie quality audit report saved to: ${chalk.bold(filePath)}`));
-    console.log(chalk.gray(`📄 Report analyzed ${result.data.length} movies, found ${problematicMovies.length} needing quality upgrades`));
+    // Filter out previously ignored items
+    const auditType = 'movie-quality';
+    const problematicMovies = filterIgnoredItems(auditType, allProblematicMovies, getMovieIssueId);
+    
+    const ignoredCount = getIgnoredItemCount(auditType);
+    if (ignoredCount > 0) {
+      console.log(chalk.gray(`📋 Found ${allProblematicMovies.length} total issues, ${ignoredCount} previously ignored, ${problematicMovies.length} new/kept items for interactive review\n`));
+    } else {
+      console.log(chalk.gray(`📋 Found ${problematicMovies.length} items for interactive review\n`));
+    }
+    
+    if (problematicMovies.length === 0) {
+      console.log(chalk.green('🎉 No movie quality issues to review interactively!'));
+      if (ignoredCount > 0) {
+        console.log(chalk.gray(`(${ignoredCount} items are being ignored from interactive review)`));
+      }
+      return;
+    }
+    
+    // Present items to user interactively
+    console.log(chalk.blue.bold('🔍 Interactive Movie Quality Review'));
+    console.log(chalk.gray('Each movie below needs a quality upgrade. Choose whether to keep or ignore each item from future reviews.\n'));
+    
+    const keptItems = await presentAuditResults(auditType, problematicMovies, getMovieIssueId, displayMovieIssue);
+    
+    if (keptItems.length > 0) {
+      console.log(chalk.cyan('\n📝 Generating actionable items report...'));
+      const actionableReportContent = generateMovieQualityReport(keptItems, result.data.length);
+      
+      const actionableFilename = generateTimestampedFilename('movie-quality-audit-actionable');
+      const actionableFilePath = writeOutputFile(actionableFilename, actionableReportContent);
+      
+      console.log(chalk.green(`✅ Actionable items report saved to: ${chalk.bold(actionableFilePath)}`));
+      console.log(chalk.gray(`📄 Actionable report contains ${keptItems.length} movies marked for quality upgrades`));
+    } else {
+      console.log(chalk.green('\n🎉 All quality issues have been addressed or ignored for future reviews!'));
+    }
     
   } catch (error) {
     console.error(chalk.red.bold('❌ Error during movie quality audit:'), error.message);

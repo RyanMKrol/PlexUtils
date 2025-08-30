@@ -5,6 +5,7 @@ import { buildTVLibraryMap } from '../utils/libraryProcessor.js';
 import { getMostCommonValue } from '../utils/dataUtils.js';
 import { getBaseFilename, getFilenameFromPath, cleanPrefixEpisodeNumbers } from '../utils/stringUtils.js';
 import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
+import { filterIgnoredItems, presentAuditResults, getIgnoredItemCount } from '../utils/interactiveUtils.js';
 import 'dotenv/config';
 
 
@@ -287,6 +288,73 @@ function generateQualityAnalysisReport(results) {
   return output;
 }
 
+/**
+ * Generate unique ID for a TV show issue
+ * @param {Object} show - Show object with inconsistency issues
+ * @returns {string} Unique identifier
+ */
+function getTvIssueId(show) {
+  return `${show.title}:${show.year}`;
+}
+
+/**
+ * Display a TV show issue to the user
+ * @param {Object} show - Show object with inconsistency issues
+ */
+function displayTvIssue(show) {
+  console.log(chalk.yellow.bold(`${show.title} (${show.year})`));
+  console.log(chalk.gray(`📁 Seasons with Issues: ${show.seasonsWithIssues.length}`));
+  
+  show.seasonsWithIssues.forEach(season => {
+    console.log(chalk.cyan(`   📁 ${season.title} - ${season.totalEpisodes} episodes`));
+    
+    // Show folder path once per season
+    if (season.issues.length > 0 && season.issues[0].outliers.length > 0) {
+      const firstFilename = season.issues[0].outliers[0].filename;
+      const folderPath = firstFilename.substring(0, firstFilename.lastIndexOf('/'));
+      console.log(chalk.gray(`      📂 Path: ${folderPath}`));
+    }
+    
+    season.issues.forEach(issue => {
+      const typeEmoji = {
+        resolution: '📐',
+        filenameConsistency: '📂'
+      }[issue.type] || '⚠️';
+      
+      const typeDisplayName = {
+        resolution: 'RESOLUTION',
+        filenameConsistency: 'FILENAME CONSISTENCY'
+      }[issue.type] || issue.type.toUpperCase();
+      
+      console.log(chalk.gray(`      ${typeEmoji} ${typeDisplayName} Inconsistency:`));
+      
+      if (issue.type === 'filenameConsistency') {
+        const prefixInfo = issue.expectedPrefix ? `Prefix: "${issue.expectedPrefix}"` : 'No common prefix';
+        const suffixInfo = issue.expectedSuffix ? `Suffix: "${issue.expectedSuffix}"` : 'No common suffix';
+        console.log(chalk.gray(`         Expected: ${prefixInfo}, ${suffixInfo}`));
+      } else {
+        console.log(chalk.gray(`         Expected: ${issue.expected}${issue.tolerance ? ` (±${issue.tolerance})` : ''}`));
+      }
+      
+      console.log(chalk.gray(`         Outliers: ${issue.outliers.length} episodes`));
+      
+      // Show first 2 outliers as examples
+      issue.outliers.slice(0, 2).forEach(outlier => {
+        const filename = getFilenameFromPath(outlier.filename);
+        if (issue.type === 'resolution') {
+          console.log(chalk.gray(`         🔸 ${outlier.episode}: ${outlier.actual} (${filename})`));
+        } else {
+          console.log(chalk.gray(`         📁 ${filename}`));
+        }
+      });
+      
+      if (issue.outliers.length > 2) {
+        console.log(chalk.gray(`         ... and ${issue.outliers.length - 2} more`));
+      }
+    });
+  });
+}
+
 async function auditTvEpisodeInconsistencies() {
   try {
     console.log(chalk.blue.bold('🔍 Auditing TV Library for Episode Inconsistencies...\n'));
@@ -338,15 +406,54 @@ async function auditTvEpisodeInconsistencies() {
     
     console.log(chalk.green('✅ Analysis complete\n'));
     
-    console.log(chalk.cyan('📝 Generating episode inconsistency report...'));
-    const reportContent = generateQualityAnalysisReport(analysisResults);
+    // Always generate complete audit report first
+    const allShowsWithIssues = analysisResults.filter(result => result.hasAbnormalities);
     
-    const filename = generateTimestampedFilename('tv-episode-inconsistencies-audit');
-    const filePath = writeOutputFile(filename, reportContent);
+    console.log(chalk.cyan('📝 Generating complete TV episode inconsistencies report...'));
+    const completeReportContent = generateQualityAnalysisReport(allShowsWithIssues);
+    const completeFilename = generateTimestampedFilename('tv-episode-inconsistencies-audit-complete');
+    const completeFilePath = writeOutputFile(completeFilename, completeReportContent);
     
-    const showsWithIssues = analysisResults.filter(result => result.hasAbnormalities);
-    console.log(chalk.green(`✅ Episode inconsistency report saved to: ${chalk.bold(filePath)}`));
-    console.log(chalk.gray(`📄 Report analyzed ${analysisResults.length} shows, found ${showsWithIssues.length} with inconsistencies`));
+    console.log(chalk.green(`✅ Complete audit report saved to: ${chalk.bold(completeFilePath)}`));
+    console.log(chalk.gray(`📄 Complete report contains ${allShowsWithIssues.length} shows with inconsistencies\n`));
+    
+    // Filter out previously ignored items
+    const auditType = 'tv-inconsistencies';
+    const showsWithIssues = filterIgnoredItems(auditType, allShowsWithIssues, getTvIssueId);
+    
+    const ignoredCount = getIgnoredItemCount(auditType);
+    if (ignoredCount > 0) {
+      console.log(chalk.gray(`📋 Found ${allShowsWithIssues.length} total shows with issues, ${ignoredCount} previously ignored, ${showsWithIssues.length} new/kept shows for interactive review\n`));
+    } else {
+      console.log(chalk.gray(`📋 Found ${showsWithIssues.length} shows with inconsistencies for interactive review\n`));
+    }
+    
+    if (showsWithIssues.length === 0) {
+      console.log(chalk.green('🎉 No TV episode inconsistencies to review interactively!'));
+      if (ignoredCount > 0) {
+        console.log(chalk.gray(`(${ignoredCount} shows are being ignored from interactive review)`));
+      }
+      return;
+    }
+    
+    // Present items to user interactively
+    console.log(chalk.blue.bold('🔍 Interactive TV Episode Inconsistency Review'));
+    console.log(chalk.gray('Each show below has episodes with inconsistent quality or naming. Choose whether to keep or ignore each show from future reviews.\n'));
+    
+    const keptShows = await presentAuditResults(auditType, showsWithIssues, getTvIssueId, displayTvIssue);
+    
+    if (keptShows.length > 0) {
+      console.log(chalk.cyan('\n📝 Generating actionable items report...'));
+      const actionableReportContent = generateQualityAnalysisReport(keptShows);
+      
+      const actionableFilename = generateTimestampedFilename('tv-episode-inconsistencies-audit-actionable');
+      const actionableFilePath = writeOutputFile(actionableFilename, actionableReportContent);
+      
+      console.log(chalk.green(`✅ Actionable items report saved to: ${chalk.bold(actionableFilePath)}`));
+      console.log(chalk.gray(`📄 Actionable report contains ${keptShows.length} shows marked for attention`));
+    } else {
+      console.log(chalk.green('\n🎉 All TV episode inconsistencies have been addressed or ignored for future reviews!'));
+    }
     
   } catch (error) {
     console.error(chalk.red.bold('❌ Error during episode inconsistency audit:'), error.message);

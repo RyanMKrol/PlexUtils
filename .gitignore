@@ -12,3 +12,4 @@
 src/resources/*
 
 out/
+tmp/

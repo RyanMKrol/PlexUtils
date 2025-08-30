@@ -8,7 +8,6 @@
     "movie-library": "node src/scripts/displayMovieLibrary.js",
     "audit-tv-episodes": "node src/scripts/auditTvEpisodeInconsistencies.js",
     "audit-movie-quality": "node src/scripts/auditMovieQuality.js",
-    "audit-all": "node src/scripts/auditAll.js",
     "check-new-seasons": "node src/scripts/checkForNewSeasons.js"
   },
   "repository": {
