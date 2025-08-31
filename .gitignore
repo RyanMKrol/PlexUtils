@@ -11,5 +11,6 @@
 
 src/resources/*
 
+in/
 out/
 tmp/

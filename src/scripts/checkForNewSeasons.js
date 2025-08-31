@@ -5,7 +5,6 @@ import { buildTVLibraryMap } from '../utils/libraryProcessor.js';
 import { RateLimiter, retryWithBackoff } from '../utils/apiUtils.js';
 import { cleanShowTitle } from '../utils/stringUtils.js';
 import { writeOutputFile, generateTimestampedFilename } from '../utils/fileUtils.js';
-import { filterIgnoredItems, presentAuditResults, getIgnoredItemCount } from '../utils/interactiveUtils.js';
 import 'dotenv/config';
 
 // Create a global rate limiter instance
@@ -320,24 +319,29 @@ function generateNewSeasonReport(results) {
 }
 
 /**
- * Generate unique ID for a new season result
- * @param {Object} result - New season check result
- * @returns {string} Unique identifier
+ * Generate JSON data with missing seasons information
+ * @param {Array} results - Array of check results
+ * @returns {Array} Array of missing season objects
  */
-function getNewSeasonId(result) {
-  return `${result.show.title}:${result.show.year}`;
-}
-
-/**
- * Display a new season result to the user
- * @param {Object} result - New season check result
- */
-function displayNewSeasonResult(result) {
-  console.log(chalk.yellow.bold(`${result.show.title} (${result.show.year})`));
-  console.log(chalk.green(`🆕 ${result.message}`));
-  console.log(chalk.cyan(`📅 Latest season aired: ${result.tmdbData.last_air_date || 'Unknown'}`));
-  console.log(chalk.gray(`🔗 TMDB: https://www.themoviedb.org/tv/${result.tmdbData.id}`));
-  console.log(chalk.gray(`📊 Missing ${result.missingSeasonsCount} season(s)`));
+function generateMissingSeasonsJson(results) {
+  const showsWithNewSeasons = results.filter(r => r.status === 'new_season_available');
+  const missingSeasons = [];
+  
+  showsWithNewSeasons.forEach(result => {
+    const { show, plexHighestSeason, tmdbHighestSeason, tmdbData } = result;
+    const releaseYear = tmdbData.first_air_date ? tmdbData.first_air_date.split('-')[0] : show.year;
+    
+    // Generate an entry for each missing season
+    for (let season = plexHighestSeason + 1; season <= tmdbHighestSeason; season++) {
+      missingSeasons.push({
+        title: show.title,
+        year: releaseYear,
+        season: season.toString()
+      });
+    }
+  });
+  
+  return missingSeasons;
 }
 
 async function checkForNewSeasons() {
@@ -372,55 +376,22 @@ async function checkForNewSeasons() {
     console.log(chalk.green(`✅ Complete season check report saved to: ${chalk.bold(completeFilePath)}`));
     console.log(chalk.gray(`📄 Complete report checked ${checkResults.length} shows total\n`));
     
-    // Filter out previously ignored items for interactive review
-    const auditType = 'new-seasons';
-    const allShowsWithNewSeasons = checkResults.filter(r => r.status === 'new_season_available');
-    const showsWithNewSeasons = filterIgnoredItems(auditType, allShowsWithNewSeasons, getNewSeasonId);
+    // Generate JSON file with missing seasons information
+    console.log(chalk.cyan('📝 Generating JSON file with missing seasons...'));
+    const missingSeasons = generateMissingSeasonsJson(checkResults);
+    const jsonFilename = generateTimestampedFilename('missing-seasons', 'json');
+    const jsonContent = JSON.stringify(missingSeasons, null, 2);
+    const jsonFilePath = writeOutputFile(jsonFilename, jsonContent);
     
-    const ignoredCount = getIgnoredItemCount(auditType);
-    if (ignoredCount > 0) {
-      console.log(chalk.gray(`📋 Found ${allShowsWithNewSeasons.length} total shows with new seasons, ${ignoredCount} previously ignored, ${showsWithNewSeasons.length} new/kept shows for interactive review\n`));
+    console.log(chalk.green(`✅ Missing seasons JSON saved to: ${chalk.bold(jsonFilePath)}`));
+    console.log(chalk.gray(`📄 JSON file contains ${missingSeasons.length} missing season entries\n`));
+    
+    const showsWithNewSeasons = checkResults.filter(r => r.status === 'new_season_available');
+    
+    if (showsWithNewSeasons.length > 0) {
+      console.log(chalk.green(`🎉 Found ${showsWithNewSeasons.length} shows with new seasons available!`));
     } else {
-      console.log(chalk.gray(`📋 Found ${showsWithNewSeasons.length} shows with new seasons for interactive review\n`));
-    }
-    
-    if (showsWithNewSeasons.length === 0) {
-      console.log(chalk.green('🎉 No new seasons to review interactively!'));
-      if (ignoredCount > 0) {
-        console.log(chalk.gray(`(${ignoredCount} shows are being ignored from interactive review)`));
-      }
-      return;
-    }
-    
-    // Present items to user interactively
-    console.log(chalk.blue.bold('🔍 Interactive New Season Review'));
-    console.log(chalk.gray('Each show below has new seasons available. Choose whether to keep or ignore each show from future reviews.\n'));
-    
-    const keptShows = await presentAuditResults(auditType, showsWithNewSeasons, getNewSeasonId, displayNewSeasonResult);
-    
-    if (keptShows.length > 0) {
-      console.log(chalk.cyan('\n📝 Generating actionable new seasons report...'));
-      
-      // Create a filtered result set with only kept shows
-      const actionableResults = checkResults.map(result => {
-        if (result.status === 'new_season_available') {
-          const isKept = keptShows.some(kept => getNewSeasonId(kept) === getNewSeasonId(result));
-          if (!isKept) {
-            // Convert to ignored status for the actionable report
-            return { ...result, status: 'ignored_by_user' };
-          }
-        }
-        return result;
-      });
-      
-      const actionableReportContent = generateNewSeasonReport(actionableResults);
-      const actionableFilename = generateTimestampedFilename('new-seasons-check-actionable');
-      const actionableFilePath = writeOutputFile(actionableFilename, actionableReportContent);
-      
-      console.log(chalk.green(`✅ Actionable new seasons report saved to: ${chalk.bold(actionableFilePath)}`));
-      console.log(chalk.gray(`📄 Actionable report contains ${keptShows.length} shows marked to download`));
-    } else {
-      console.log(chalk.green('\n🎉 All new seasons have been addressed or ignored for future reviews!'));
+      console.log(chalk.green('🎉 All your shows are up to date!'));
     }
     
   } catch (error) {
