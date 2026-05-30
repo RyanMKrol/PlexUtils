@@ -55,11 +55,14 @@ async function getFromLocalhost(url, timeoutMs = 0) {
  * @param {string} baseUrl e.g. https://192.168.1.12:32400
  * @param {string} token Plex API token
  * @param {string|null} expectedMachineId If set, the server must match this id
+ * @param {number} timeoutMs Abort timeout. Must comfortably exceed a cold TLS
+ *   handshake against Plex's self-signed cert (~2s in practice), or healthy
+ *   servers get spuriously rejected.
  * @returns {Promise<string|null>} The machineIdentifier if alive, else null
  */
-async function probePlexIdentity(baseUrl, token, expectedMachineId = null) {
+async function probePlexIdentity(baseUrl, token, expectedMachineId = null, timeoutMs = 6000) {
   try {
-    const response = await getFromLocalhost(`${baseUrl}/identity?X-Plex-Token=${token}`, 2000);
+    const response = await getFromLocalhost(`${baseUrl}/identity?X-Plex-Token=${token}`, timeoutMs);
     if (!response.ok) return null;
 
     const parser = new XMLParser({ ignoreAttributes: false });
