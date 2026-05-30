@@ -6,9 +6,12 @@
   "scripts": {
     "tv-library": "node src/scripts/displayTVLibrary.js",
     "movie-library": "node src/scripts/displayMovieLibrary.js",
+    "tv-names": "node src/scripts/listTVNames.js",
+    "movie-names": "node src/scripts/listMovieNames.js",
     "audit-tv-episodes": "node src/scripts/auditTvEpisodeInconsistencies.js",
     "audit-movie-quality": "node src/scripts/auditMovieQuality.js",
-    "check-new-seasons": "node src/scripts/checkForNewSeasons.js"
+    "check-new-seasons": "node src/scripts/checkForNewSeasons.js",
+    "generate-all-seasons": "node src/scripts/generateAllSeasons.js"
   },
   "repository": {
     "type": "git",
